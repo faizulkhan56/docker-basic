@@ -222,6 +222,67 @@ Compose manages multi-container apps using one YAML file, with cleaner dependenc
 
 ---
 
+## Ubuntu Setup (Docker + Docker Compose)
+
+Run these steps on Ubuntu before starting live demos.
+
+### 1) Remove old/conflicting packages (safe if not installed)
+
+```bash
+for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
+  sudo apt-get remove -y $pkg
+done
+```
+
+### 2) Install Docker official repository
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo $VERSION_CODENAME) stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+
+### 3) Install Docker Engine + Compose plugin
+
+```bash
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+### 4) Start and enable Docker service
+
+```bash
+sudo systemctl enable docker
+sudo systemctl start docker
+```
+
+### 5) (Recommended) Run Docker without sudo
+
+```bash
+sudo groupadd docker 2>/dev/null || true
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+If group changes do not apply immediately, log out and log back in once.
+
+### 6) Verify installation
+
+```bash
+docker version
+docker compose version
+docker run --rm hello-world
+```
+
+---
+
 ## Live Demo Plan (Step-by-Step)
 
 Use this sequence during class:
