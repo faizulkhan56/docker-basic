@@ -384,7 +384,20 @@ docker run -d --name class-mysql -e MYSQL_ROOT_PASSWORD=root123 -e MYSQL_DATABAS
 
 ### C) Prove Persistence
 
-1) Insert any sample record.  
+1) Create table and insert sample data:
+
+Windows PowerShell:
+
+```powershell
+docker exec -it class-mysql mysql -uroot -proot123 -e "USE training; CREATE TABLE IF NOT EXISTS students (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL); INSERT INTO students (name) VALUES ('Alice'),('Bob'),('Charlie'); SELECT * FROM students;"
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker exec -it class-mysql mysql -uroot -proot123 -e "USE training; CREATE TABLE IF NOT EXISTS students (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL); INSERT INTO students (name) VALUES ('Alice'),('Bob'),('Charlie'); SELECT * FROM students;"
+```
+
 2) Stop and remove container:
 
 Windows PowerShell:
@@ -400,7 +413,19 @@ docker rm -f class-mysql
 ```
 
 3) Run same command again (same volume).  
-4) Show data still exists.
+4) Verify data still exists after container recreation:
+
+Windows PowerShell:
+
+```powershell
+docker exec -it class-mysql mysql -uroot -proot123 -e "USE training; SELECT * FROM students;"
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker exec -it class-mysql mysql -uroot -proot123 -e "USE training; SELECT * FROM students;"
+```
 
 ### D) Bind Mount Quick Example (Optional)
 
