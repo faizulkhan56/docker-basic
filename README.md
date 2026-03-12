@@ -222,6 +222,19 @@ Compose manages multi-container apps using one YAML file, with cleaner dependenc
 
 ---
 
+### 25) `image/25-server-docker-portmapping.png` - Port Mapping
+![25](image/25-server-docker-portmapping.png)
+
+Port mapping (`-p host_port:container_port`) exposes container services to the host and external networks. Without mapping, services are only accessible via container internal IPs. Multiple containers can map different host ports to the same container port, enabling multiple instances of the same service.
+
+**Key concepts:**
+- `docker run -p 80:5000` maps host port 80 to container port 5000
+- `docker run -p 8000:5000` maps host port 8000 to container port 5000
+- Without `-p`, the service is only reachable via container's internal IP (e.g., `172.17.0.2:5000`)
+- With `-p`, external users access via host IP and mapped port (e.g., `http://192.168.1.5:80`)
+
+---
+
 ## Ubuntu Setup (Docker + Docker Compose)
 
 Run these steps on Ubuntu before starting live demos.
