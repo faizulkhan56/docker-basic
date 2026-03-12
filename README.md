@@ -565,3 +565,18 @@ docker system df
 - Keep one terminal for commands and one for logs.
 - Ask participants to run each step with you.
 
+```mermaid
+flowchart LR
+src[SourceSystems] --> ing[IngestAndStandardize]
+ing --> cls[ClassifyAndTagOwner]
+cls --> own[OwnerApproval]
+own --> ctl[CustodianControls]
+ctl --> rbac[RBACAndPurposeCheck]
+rbac --> hub[IntegrationHubAPI]
+hub --> use[AuthorizedUseDashboardsReports]
+use --> aud[AuditAndMonitoring]
+aud --> gov[GovernanceReview]
+gov --> upd[PolicyControlUpdate]
+upd --> cls
+```
+
