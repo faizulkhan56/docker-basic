@@ -304,6 +304,7 @@ Use this sequence during class:
 2. Dockerfile demo (build and run Python app)
 3. Volume demo (data persistence)
 4. Compose demo (web + db services)
+5. Docker Hub demo (login, tag, push, verify)
 
 ---
 
@@ -534,6 +535,219 @@ docker compose down -v
 
 ---
 
+## Demo 4: Docker Hub Push (Image Registry)
+
+This demo shows how to push a Docker image to Docker Hub, making it available publicly or privately.
+
+Demo files are in `class-demo/dockerhub-demo/`.
+
+### Prerequisites
+
+1. **Create Docker Hub Account** (if not already done):
+   - Go to [https://hub.docker.com](https://hub.docker.com)
+   - Click "Sign Up" and create a free account
+   - Verify your email address
+   - Note your Docker Hub username (e.g., `yourusername`)
+
+### A) Build the Image
+
+Windows PowerShell:
+
+```powershell
+cd .\class-demo\dockerhub-demo
+docker build -t nginx-demo:v1 .
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+cd ./class-demo/dockerhub-demo
+docker build -t nginx-demo:v1 .
+```
+
+**Verify the image was created:**
+
+```bash
+docker images nginx-demo:v1
+```
+
+### B) Test the Image Locally
+
+Windows PowerShell:
+
+```powershell
+docker run -d -p 8081:80 --name nginx-test nginx-demo:v1
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker run -d -p 8081:80 --name nginx-test nginx-demo:v1
+```
+
+Open: `http://localhost:8081` to verify it works.
+
+**Stop and remove test container:**
+
+```bash
+docker rm -f nginx-test
+```
+
+### C) Login to Docker Hub
+
+Windows PowerShell:
+
+```powershell
+docker login
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker login
+```
+
+**What to expect:**
+- Enter your Docker Hub username
+- Enter your Docker Hub password (or access token)
+- Success message: `Login Succeeded`
+
+**Note:** If you have 2FA enabled, use an access token instead of password. Create one at: Docker Hub → Account Settings → Security → New Access Token
+
+### D) Tag the Image for Docker Hub
+
+**Important:** Docker Hub requires images to be tagged with format: `username/imagename:tag`
+
+Replace `yourusername` with your actual Docker Hub username:
+
+Windows PowerShell:
+
+```powershell
+docker tag nginx-demo:v1 yourusername/nginx-demo:v1
+docker tag nginx-demo:v1 yourusername/nginx-demo:latest
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker tag nginx-demo:v1 yourusername/nginx-demo:v1
+docker tag nginx-demo:v1 yourusername/nginx-demo:latest
+```
+
+**Verify tags:**
+
+```bash
+docker images | grep nginx-demo
+```
+
+You should see:
+- `nginx-demo:v1`
+- `yourusername/nginx-demo:v1`
+- `yourusername/nginx-demo:latest`
+
+### E) Push Image to Docker Hub
+
+Windows PowerShell:
+
+```powershell
+docker push yourusername/nginx-demo:v1
+docker push yourusername/nginx-demo:latest
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker push yourusername/nginx-demo:v1
+docker push yourusername/nginx-demo:latest
+```
+
+**What to expect:**
+- Layers will be pushed one by one
+- Progress bars show upload status
+- Success message: `v1: digest: sha256:...`
+
+**Note:** First push may take a few minutes depending on internet speed.
+
+### F) Verify on Docker Hub Website
+
+1. Go to [https://hub.docker.com](https://hub.docker.com)
+2. Login to your account
+3. Click on your profile → "Repositories"
+4. You should see `yourusername/nginx-demo` listed
+5. Click on the repository to see:
+   - Tags: `v1` and `latest`
+   - Image size
+   - Pull command: `docker pull yourusername/nginx-demo:latest`
+   - Last pushed timestamp
+
+### G) Test Pulling from Docker Hub
+
+**Remove local image first:**
+
+```bash
+docker rmi yourusername/nginx-demo:v1 yourusername/nginx-demo:latest nginx-demo:v1
+```
+
+**Pull from Docker Hub:**
+
+Windows PowerShell:
+
+```powershell
+docker pull yourusername/nginx-demo:latest
+docker run -d -p 8082:80 --name nginx-from-hub yourusername/nginx-demo:latest
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker pull yourusername/nginx-demo:latest
+docker run -d -p 8082:80 --name nginx-from-hub yourusername/nginx-demo:latest
+```
+
+Open: `http://localhost:8082` - should show the same page!
+
+**Cleanup:**
+
+```bash
+docker rm -f nginx-from-hub
+```
+
+### H) Key Concepts Explained
+
+- **Docker Hub**: Public registry for Docker images (like GitHub for code)
+- **Tagging**: `docker tag` creates a new reference to the same image layer
+- **Pushing**: `docker push` uploads image layers to registry
+- **Pulling**: `docker pull` downloads image from registry
+- **Image naming**: `username/repository:tag` format required for Docker Hub
+- **Latest tag**: Convention for most recent stable version
+
+### I) Common Commands Reference
+
+```bash
+# Login
+docker login
+
+# Logout
+docker logout
+
+# List your images
+docker images
+
+# Tag image
+docker tag <source> <target>
+
+# Push image
+docker push <username>/<image>:<tag>
+
+# Pull image
+docker pull <username>/<image>:<tag>
+
+# Search public images
+docker search nginx
+```
+
+---
+
 ## Useful Commands for Class Q&A
 
 ```bash
@@ -555,8 +769,17 @@ docker system df
 - 20-40 min: Dockerfile + image layers (13-17)
 - 40-55 min: Volume and persistence (18)
 - 55-70 min: Networks + DNS (19-21)
+- 70-80 min: Compose demo (24)
+- 80-90 min: Docker Hub push demo + Q&A
+
+**Extended 120-Minute Option:**
+- 0-20 min: Concepts using image 1-12
+- 20-40 min: Dockerfile + image layers (13-17)
+- 40-55 min: Volume and persistence (18)
+- 55-70 min: Networks + DNS (19-21)
 - 70-85 min: Compose demo (24)
-- 85-90 min: Q&A and recap
+- 85-105 min: Docker Hub push demo (login, tag, push, verify)
+- 105-120 min: Q&A and recap
 
 ---
 
@@ -567,6 +790,7 @@ docker system df
 3. Create a named volume and mount it to any container.
 4. Run compose demo and access web service.
 5. Stop compose and restart without losing DB data.
+6. Build nginx-demo image, tag it with your Docker Hub username, and push to Docker Hub.
 
 ---
 
@@ -578,18 +802,4 @@ docker system df
 - Keep one terminal for commands and one for logs.
 - Ask participants to run each step with you.
 
-```mermaid
-flowchart LR
-src[SourceSystems] --> ing[IngestAndStandardize]
-ing --> cls[ClassifyAndTagOwner]
-cls --> own[OwnerApproval]
-own --> ctl[CustodianControls]
-ctl --> rbac[RBACAndPurposeCheck]
-rbac --> hub[IntegrationHubAPI]
-hub --> use[AuthorizedUseDashboardsReports]
-use --> aud[AuditAndMonitoring]
-aud --> gov[GovernanceReview]
-gov --> upd[PolicyControlUpdate]
-upd --> cls
-```
 

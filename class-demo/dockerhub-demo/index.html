@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Hub Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 600px;
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 18px;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐳 Docker Hub Push Demo</h1>
+        <p>Congratulations! This image was successfully built and pushed to Docker Hub.</p>
+        <p class="success">✓ Image is running from Docker Hub</p>
+        <p style="margin-top: 30px; font-size: 14px; color: #999;">
+            Built with: nginx:alpine<br>
+            Custom HTML page
+        </p>
+    </div>
+</body>
+</html>
