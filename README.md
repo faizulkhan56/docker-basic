@@ -213,6 +213,272 @@ Namespaces isolate PID, network, mount, IPC, etc. This is the core of container 
 
 Container sees its own process tree (PID namespace), while host sees all processes globally.
 
+**Key concept:** Processes inside a container have their own PID namespace starting from 1, but on the host they appear with different PIDs. This isolation is fundamental to container security.
+
+---
+
+## Demo: PID Namespace Isolation (Image 23)
+
+This demo demonstrates how Linux PID namespaces isolate processes between containers and the host system.
+
+Demo files are in `class-demo/pid-namespace-demo/`.
+
+### A) Build the Image
+
+Windows PowerShell:
+
+```powershell
+cd .\class-demo\pid-namespace-demo
+docker build -t pid-demo:latest .
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+cd ./class-demo/pid-namespace-demo
+docker build -t pid-demo:latest .
+```
+
+### B) Run the Container
+
+Windows PowerShell:
+
+```powershell
+docker run -d --name pid-demo-container -p 8083:80 pid-demo:latest
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker run -d --name pid-demo-container -p 8083:80 pid-demo:latest
+```
+
+**Verify container is running:**
+
+```bash
+docker ps | grep pid-demo-container
+```
+
+### C) Add Additional Processes and Check Inside Container
+
+**First, add some sleep processes to demonstrate multiple processes:**
+
+Windows PowerShell:
+
+```powershell
+docker exec -d pid-demo-container sh -c "sleep 3600 & sleep 3600 & sleep 3600 &"
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker exec -d pid-demo-container sh -c "sleep 3600 & sleep 3600 & sleep 3600 &"
+```
+
+**Now view processes from container's perspective:**
+
+Windows PowerShell:
+
+```powershell
+docker exec pid-demo-container ps aux
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker exec pid-demo-container ps aux
+```
+
+**Expected output (container's view):**
+```
+PID   USER     TIME  COMMAND
+  1   root     0:00  nginx: master process nginx -g daemon off;
+  7   nginx    0:00  nginx: worker process
+  8   root     0:00  sleep 3600
+  9   root     0:00  sleep 3600
+ 10   root     0:00  sleep 3600
+```
+
+**Key observation:** Inside the container, processes start from PID 1. The nginx master process is PID 1, and other processes have sequential PIDs (7, 8, 9, 10). The container sees its own isolated PID namespace.
+
+**Alternative: Use `top` inside container:**
+
+```bash
+docker exec pid-demo-container top -b -n 1
+```
+
+**Get specific process PID inside container:**
+
+```bash
+docker exec pid-demo-container pgrep nginx
+docker exec pid-demo-container pgrep sleep
+```
+
+### D) Check Processes on Host (Ubuntu VM)
+
+**View processes from host's perspective:**
+
+On Ubuntu/Linux host:
+
+```bash
+ps aux | grep pid-demo-container
+```
+
+**Or use `docker top` command (works on both Windows and Linux):**
+
+```bash
+docker top pid-demo-container
+```
+
+**Expected output (host's view):**
+```
+UID                 PID                 PPID                CMD
+root                12345               12340               nginx: master process nginx -g daemon off;
+systemd+            12350               12345               nginx: worker process
+root                12355               12340               sleep 3600
+root                12360               12340               sleep 3600
+root                12365               12340               sleep 3600
+```
+
+**Key observation:** On the host, the same processes have completely different PIDs (e.g., 12345, 12350, 12355, etc.). These are much higher than the container's PIDs.
+
+### E) Compare PIDs: Container vs Host
+
+**Step 1: Get PID inside container (nginx master):**
+
+```bash
+CONTAINER_PID=$(docker exec pid-demo-container pgrep -f "nginx: master")
+echo "Container sees nginx master as PID: $CONTAINER_PID"
+```
+
+**Step 2: Get the actual host PID:**
+
+On Ubuntu/Linux:
+
+```bash
+# Get the container's main process PID on host
+HOST_PID=$(docker inspect --format '{{.State.Pid}}' pid-demo-container)
+echo "Container's main process on host is PID: $HOST_PID"
+
+# Find all child processes
+ps --ppid $HOST_PID -o pid,cmd
+```
+
+**Step 3: Show the mapping visually:**
+
+```bash
+echo "=== Container View ==="
+docker exec pid-demo-container ps aux | head -6
+
+echo ""
+echo "=== Host View ==="
+docker top pid-demo-container
+```
+
+### F) Detailed Process Tree Comparison
+
+**Inside Container (PID namespace isolated):**
+
+```bash
+docker exec pid-demo-container ps auxf
+```
+
+**On Host (real PID namespace):**
+
+On Ubuntu/Linux:
+
+```bash
+# Get container's PID on host
+CONTAINER_HOST_PID=$(docker inspect --format '{{.State.Pid}}' pid-demo-container)
+
+# Show process tree from host perspective
+pstree -p $CONTAINER_HOST_PID
+```
+
+**Alternative using `docker inspect`:**
+
+```bash
+docker inspect pid-demo-container | grep -i pid
+```
+
+### G) Demonstrate PID Isolation
+
+**Create a second container and compare:**
+
+```bash
+docker run -d --name pid-demo-container-2 -p 8084:80 pid-demo:latest
+```
+
+**Check processes in second container:**
+
+```bash
+docker exec pid-demo-container-2 ps aux
+```
+
+**Observation:** The second container also has processes starting from PID 1, completely independent from the first container.
+
+**Compare both containers' processes:**
+
+```bash
+echo "=== Container 1 ==="
+docker exec pid-demo-container ps aux | head -3
+
+echo ""
+echo "=== Container 2 ==="
+docker exec pid-demo-container-2 ps aux | head -3
+
+echo ""
+echo "=== Host View (both containers) ==="
+docker top pid-demo-container
+docker top pid-demo-container-2
+```
+
+### H) Key Concepts Demonstrated
+
+1. **PID Namespace Isolation:**
+   - Each container has its own PID namespace
+   - Processes inside container start from PID 1
+   - Host sees different PIDs for the same processes
+
+2. **Process Mapping:**
+   - Container PID 1 → Host PID (e.g., 12345)
+   - Container PID 8 → Host PID (e.g., 12355)
+   - Mapping is transparent to processes inside container
+
+3. **Security Implication:**
+   - Container processes cannot see host processes
+   - Container processes cannot directly interact with host processes by PID
+   - Isolation prevents container from affecting host system processes
+
+### I) Cleanup
+
+```bash
+docker rm -f pid-demo-container pid-demo-container-2
+docker rmi pid-demo:latest
+```
+
+### J) Quick Reference Commands
+
+```bash
+# View processes inside container
+docker exec <container> ps aux
+
+# View processes from host perspective
+docker top <container>
+
+# Get container's main process PID on host
+docker inspect --format '{{.State.Pid}}' <container>
+
+# Find specific process PID inside container
+docker exec <container> pgrep <process_name>
+
+# Show process tree inside container
+docker exec <container> ps auxf
+
+# Show process tree on host (Linux)
+pstree -p $(docker inspect --format '{{.State.Pid}}' <container>)
+```
+
 ---
 
 ### 24) `image/24-docker-compose-evolution.png` - Docker Compose Evolution
@@ -305,6 +571,7 @@ Use this sequence during class:
 3. Volume demo (data persistence)
 4. Compose demo (web + db services)
 5. Docker Hub demo (login, tag, push, verify)
+6. **Optional Advanced:** PID Namespace demo (process isolation - Image 23)
 
 ---
 
