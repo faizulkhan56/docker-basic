@@ -1104,17 +1104,208 @@ docker compose ps
 docker compose logs -f web
 ```
 
+**Check web service:**
+
 Open: `http://localhost:8080`
 
-### C) Explain Compose Concepts
+You should see:
+```json
+{"message": "Docker Compose demo: web + mysql"}
+```
+
+**Check database connection endpoint:**
+
+Open: `http://localhost:8080/db-check`
+
+**Or if accessing from another machine (e.g., Ubuntu VM), use the host IP:**
+
+Open: `http://192.168.56.104:8080/db-check`
+
+**Expected response:**
+```json
+{"students": 3}
+```
+
+This confirms:
+- Flask app is running
+- Database connection works
+- Data is accessible via the web service
+
+### C) Check Database Directly (MySQL Container)
+
+You can also verify the database directly by entering the MySQL container.
+
+#### 1) Enter the MySQL Container
+
+Windows PowerShell:
+
+```powershell
+docker exec -it class-demo-db mysql -uroot -proot123 training
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker exec -it class-demo-db mysql -uroot -proot123 training
+```
+
+**Meaning:**
+- `docker exec -it` → enter running container process interactively
+- `class-demo-db` → your DB container name
+- `mysql` → start MySQL client inside the container
+- `-uroot` → MySQL username
+- `-proot123` → password
+- `training` → database name
+
+After entering, you should see a MySQL prompt like:
+```
+mysql>
+```
+
+#### 2) Show All Tables
+
+Inside MySQL, run:
+
+```sql
+SHOW TABLES;
+```
+
+**Expected output:**
+```
++--------------------+
+| Tables_in_training |
++--------------------+
+| students           |
++--------------------+
+```
+
+#### 3) Check All Rows in Students Table
+
+Run:
+
+```sql
+SELECT * FROM students;
+```
+
+**Expected output:**
+```
++----+---------+
+| id | name    |
++----+---------+
+|  1 | Alice   |
+|  2 | Bob     |
+|  3 | Charlie |
++----+---------+
+```
+
+#### 4) Check the Count (Same as Flask Endpoint)
+
+Run:
+
+```sql
+SELECT COUNT(*) AS total FROM students;
+```
+
+**Expected output:**
+```
++-------+
+| total |
++-------+
+|     3 |
++-------+
+```
+
+This is the same result your Flask endpoint returned: `{"students": 3}`
+
+#### 5) Exit MySQL Shell
+
+Run:
+
+```sql
+exit
+```
+
+or
+
+```sql
+quit
+```
+
+### D) One-Line Direct Check (Without Entering Interactive Shell)
+
+If you want to run a query directly from host terminal without entering the MySQL shell:
+
+**Show all student rows:**
+
+Windows PowerShell:
+
+```powershell
+docker exec -it class-demo-db mysql -uroot -proot123 training -e "SELECT * FROM students;"
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker exec -it class-demo-db mysql -uroot -proot123 training -e "SELECT * FROM students;"
+```
+
+**Get count:**
+
+```bash
+docker exec -it class-demo-db mysql -uroot -proot123 training -e "SELECT COUNT(*) AS total FROM students;"
+```
+
+### E) Very Useful Quick Commands
+
+**Show databases:**
+
+```bash
+docker exec -it class-demo-db mysql -uroot -proot123 -e "SHOW DATABASES;"
+```
+
+**Show tables in training database:**
+
+```bash
+docker exec -it class-demo-db mysql -uroot -proot123 training -e "SHOW TABLES;"
+```
+
+**Describe table structure:**
+
+```bash
+docker exec -it class-demo-db mysql -uroot -proot123 training -e "DESCRIBE students;"
+```
+
+**Show all student rows:**
+
+```bash
+docker exec -it class-demo-db mysql -uroot -proot123 training -e "SELECT * FROM students;"
+```
+
+### F) Important Understanding
+
+**Request Flow:**
+
+Your browser request `/db-check` goes like this:
+
+```
+Browser → Flask container → MySQL container → students table
+```
+
+**When you query directly inside DB container:**
+- You are bypassing Flask
+- You are checking the source data itself
+- This is useful for debugging and verification
+
+### G) Explain Compose Concepts
 
 - Service definitions (`web`, `db`)
 - Automatic network
 - Volume mounting for DB persistence
 - Environment variables
 - Dependency with `depends_on`
+- Service communication via container names
 
-### D) Stop and Cleanup
+### H) Stop and Cleanup
 
 Windows PowerShell:
 
