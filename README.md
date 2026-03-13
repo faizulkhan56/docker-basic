@@ -569,9 +569,10 @@ Use this sequence during class:
 1. Docker fundamentals check
 2. Dockerfile demo (build and run Python app)
 3. Volume demo (data persistence)
-4. Compose demo (web + db services)
-5. Docker Hub demo (login, tag, push, verify)
-6. **Optional Advanced:** PID Namespace demo (process isolation - Image 23)
+4. DNS Name Resolution demo (embedded DNS, container name resolution)
+5. Compose demo (web + db services)
+6. Docker Hub demo (login, tag, push, verify)
+7. **Optional Advanced:** PID Namespace demo (process isolation - Image 23)
 
 ---
 
@@ -726,7 +727,348 @@ Create file inside `/data` and show it appears on host folder.
 
 ---
 
-## Demo 3: Docker Compose Basic Example
+## Demo 3: Docker DNS Name Resolution Lab
+
+This demo demonstrates Docker's embedded DNS server and how containers on the same user-defined network can resolve each other by container name.
+
+**Goal:**
+- Create a Docker network
+- Run two containers on the same network
+- Ping container by name
+- Inspect Docker DNS server (127.0.0.11)
+- Show how the name resolves internally
+
+### Step 1: Create a Custom Docker Network
+
+Windows PowerShell:
+
+```powershell
+docker network create lab-net
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker network create lab-net
+```
+
+**Verify:**
+
+```bash
+docker network ls
+```
+
+You should see `lab-net` in the list.
+
+### Step 2: Start Container 1
+
+We use Alpine because it has small networking tools.
+
+Windows PowerShell:
+
+```powershell
+docker run -dit --name nginx1 --network lab-net alpine sh
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker run -dit --name nginx1 --network lab-net alpine sh
+```
+
+**Explanation:**
+- `-d` → run in background
+- `-i` → interactive
+- `-t` → terminal
+
+### Step 3: Start Container 2
+
+Windows PowerShell:
+
+```powershell
+docker run -dit --name nginx2 --network lab-net alpine sh
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker run -dit --name nginx2 --network lab-net alpine sh
+```
+
+Now both containers are inside the same network.
+
+### Step 4: Check Their IP Addresses
+
+**Get nginx1 IP:**
+
+```bash
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nginx1
+```
+
+**Example output:** `172.18.0.2`
+
+**Get nginx2 IP:**
+
+```bash
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nginx2
+```
+
+**Example output:** `172.18.0.3`
+
+### Step 5: Enter Container 1
+
+Windows PowerShell:
+
+```powershell
+docker exec -it nginx1 sh
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker exec -it nginx1 sh
+```
+
+Now you are inside container `nginx1`.
+
+### Step 6: Install Ping + DNS Tools
+
+Inside the container, run:
+
+```bash
+apk add iputils bind-tools
+```
+
+This installs:
+- `ping`
+- `nslookup`
+- `dig`
+
+### Step 7: Ping Container by Name
+
+Inside container, run:
+
+```bash
+ping nginx2
+```
+
+**Example result:**
+```
+PING nginx2 (172.18.0.3): 56 data bytes
+64 bytes from 172.18.0.3: seq=0 ttl=64 time=0.08 ms
+64 bytes from 172.18.0.3: seq=1 ttl=64 time=0.10 ms
+...
+```
+
+**Press `Ctrl+C` to stop ping.**
+
+**Important point:**
+- `ping nginx2` - Docker resolves `nginx2 → 172.18.0.3`
+- Container name resolution works automatically!
+
+### Step 8: Verify DNS Resolution Explicitly
+
+**Using nslookup:**
+
+```bash
+nslookup nginx2
+```
+
+**Example output:**
+```
+Server:    127.0.0.11
+Address 1: 127.0.0.11
+
+Name:      nginx2
+Address 1: 172.18.0.3
+```
+
+**Key observation:**
+- DNS server = `127.0.0.11`
+- This is Docker's internal DNS server
+
+**Using dig:**
+
+```bash
+dig nginx2
+```
+
+**Example output:**
+```
+;; QUESTION SECTION:
+;nginx2.				IN	A
+
+;; ANSWER SECTION:
+nginx2.			600	IN	A	172.18.0.3
+```
+
+### Step 9: Check /etc/resolv.conf
+
+Inside container, run:
+
+```bash
+cat /etc/resolv.conf
+```
+
+**Output will look like:**
+```
+nameserver 127.0.0.11
+options ndots:0
+```
+
+**Meaning:**
+- Container → query DNS → `127.0.0.11`
+- Docker intercepts this request
+
+### Step 10: Check Container Hostname Resolution
+
+Run:
+
+```bash
+getent hosts nginx2
+```
+
+**Example:**
+```
+172.18.0.3 nginx2
+```
+
+Again proving DNS resolution works.
+
+### Step 11: Inspect Hosts File
+
+Run:
+
+```bash
+cat /etc/hosts
+```
+
+**You will see something like:**
+```
+127.0.0.1 localhost
+172.18.0.2 nginx1
+```
+
+**Important:**
+- `nginx2` will **NOT** appear here
+- Because Docker uses DNS server, not hosts file, for other containers
+
+### Step 12: Exit Container
+
+```bash
+exit
+```
+
+### How Docker DNS Actually Works Internally
+
+**When container starts:**
+Docker registers:
+- Container name
+- Container ID
+- Network
+- IP address
+
+Inside an embedded DNS database.
+
+**Example mapping stored internally:**
+```
+nginx1 → 172.18.0.2
+nginx2 → 172.18.0.3
+```
+
+### DNS Resolution Flow
+
+```
+Container nginx1
+      |
+      | ping nginx2
+      |
+glibc resolver
+      |
+/etc/resolv.conf
+      |
+nameserver 127.0.0.11
+      |
+Docker embedded DNS
+      |
+Lookup container registry
+      |
+Return IP 172.18.0.3
+      |
+Ping sent
+```
+
+### Visual Architecture
+
+```
+Container nginx1
+      |
+      | DNS Query nginx2
+      |
+127.0.0.11 (Docker DNS)
+      |
+Docker Network DB
+      |
+nginx2 → 172.18.0.3
+      |
+Response returned
+```
+
+### Important Rule
+
+**Docker DNS works only when containers are on same user-defined network.**
+
+✅ **Works here:**
+```bash
+docker network create lab-net
+docker run --network lab-net ...
+```
+
+❌ **Does NOT work on default bridge** with automatic name resolution.
+
+### Step 13: Cleanup
+
+Exit from container if still inside, then:
+
+```bash
+docker rm -f nginx1 nginx2
+docker network rm lab-net
+```
+
+### Quick Command Summary
+
+```bash
+# Create network
+docker network create lab-net
+
+# Start containers
+docker run -dit --name nginx1 --network lab-net alpine sh
+docker run -dit --name nginx2 --network lab-net alpine sh
+
+# Enter container
+docker exec -it nginx1 sh
+
+# Install tools (inside container)
+apk add iputils bind-tools
+
+# Test DNS resolution (inside container)
+ping nginx2
+nslookup nginx2
+dig nginx2
+getent hosts nginx2
+
+# Check configuration (inside container)
+cat /etc/resolv.conf
+cat /etc/hosts
+
+# Cleanup
+docker rm -f nginx1 nginx2
+docker network rm lab-net
+```
+
+---
+
+## Demo 4: Docker Compose Basic Example
 
 Demo files are in `class-demo/compose-demo/`.
 
@@ -802,7 +1144,7 @@ docker compose down -v
 
 ---
 
-## Demo 4: Docker Hub Push (Image Registry)
+## Demo 5: Docker Hub Push (Image Registry)
 
 This demo shows how to push a Docker image to Docker Hub, making it available publicly or privately.
 
