@@ -1548,6 +1548,90 @@ docker search nginx
 
 ---
 
+## Push Image to GitHub Container Registry (GHCR)
+
+This section uses the Dockerfile from `ghcr-test`.
+
+### A) Build Image from `ghcr-test`
+
+Windows PowerShell:
+
+```powershell
+cd .\ghcr-test
+docker build -t ghcr-demo:v1 .
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+cd ./ghcr-test
+docker build -t ghcr-demo:v1 .
+```
+
+### B) Login to GHCR
+
+Use a GitHub Personal Access Token (PAT) with package permissions (`write:packages` at minimum).
+
+Windows PowerShell / Ubuntu/Linux/macOS:
+
+```bash
+echo GHTOKEN | docker login ghcr.io -u faizulkhan56 --password-stdin
+```
+
+Expected result: `Login Succeeded`
+
+### C) Tag Image for GHCR
+
+GHCR image format:
+`ghcr.io/<github-username>/<image-name>:<tag>`
+
+Windows PowerShell:
+
+```powershell
+docker tag ghcr-demo:v1 ghcr.io/faizulkhan56/ghcr-demo:v1
+docker tag ghcr-demo:v1 ghcr.io/faizulkhan56/ghcr-demo:latest
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker tag ghcr-demo:v1 ghcr.io/faizulkhan56/ghcr-demo:v1
+docker tag ghcr-demo:v1 ghcr.io/faizulkhan56/ghcr-demo:latest
+```
+
+### D) Push Image to GHCR
+
+Windows PowerShell:
+
+```powershell
+docker push ghcr.io/faizulkhan56/ghcr-demo:v1
+docker push ghcr.io/faizulkhan56/ghcr-demo:latest
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker push ghcr.io/faizulkhan56/ghcr-demo:v1
+docker push ghcr.io/faizulkhan56/ghcr-demo:latest
+```
+
+### E) Verify Pull from GHCR
+
+```bash
+docker pull ghcr.io/faizulkhan56/ghcr-demo:latest
+docker run -d -p 8083:80 --name nginx-from-ghcr ghcr.io/faizulkhan56/ghcr-demo:latest
+```
+
+Open: `http://localhost:8083`
+
+Cleanup:
+
+```bash
+docker rm -f nginx-from-ghcr
+```
+
+---
+
 ## Useful Commands for Class Q&A
 
 ```bash
