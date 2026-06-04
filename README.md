@@ -14,13 +14,52 @@ The image sequence is intentionally ordered, and the content below follows the s
 
 ---
 
+## Class Demo Index
+
+Hands-on sample projects live under `class-demo/`. Pick one runtime per exercise. For Compose, Java and Node use different host ports than Python so you can run stacks side by side.
+
+| Folder | Runtime | Topic | README section | Host ports (when running) |
+|--------|---------|-------|----------------|---------------------------|
+| `class-demo/dockerfile-demo` | Python | Single-service Dockerfile | [Demo 1](#demo-1-dockerfile-basic-example) | `8000` |
+| `class-demo/dockerfile-demo-java` | Java | Single-service Dockerfile (multi-stage) | [Demo 1 (Java)](#demo-1-java-dockerfile-basic-example) | `8000` |
+| `class-demo/dockerfile-demo-nodejs` | Node.js | Single-service Dockerfile | [Demo 1 (Node.js)](#demo-1-nodejs-dockerfile-basic-example) | `8000` |
+| `class-demo/compose-demo` | Python | Web + MySQL via Compose | [Demo 4](#demo-4-docker-compose-basic-example) | Web `8080`, MySQL `3308` |
+| `class-demo/compose-demo-java` | Java | Web + MySQL via Compose | [Demo 4 (Java)](#demo-4-java-docker-compose-basic-example) | Web `8091`, MySQL `3309` |
+| `class-demo/compose-demo-nodejs` | Node.js | Web + MySQL via Compose | [Demo 4 (Node.js)](#demo-4-nodejs-docker-compose-basic-example) | Web `8092`, MySQL `3310` |
+
+**Note:** Only one Dockerfile demo should bind host port `8000` at a time. Compose demos can run together because each stack uses its own web and MySQL ports. Java (`8091`) and Node (`8092`) web ports avoid clashes with Demo 5 (`8081`/`8082`) and PID demo (`8083`).
+
+**Ubuntu server:** install Docker Engine before the labs (see [Prerequisites](#prerequisites-for-participants)). Optional full smoke test: `./scripts/verify-demos-ubuntu.sh` from the repo root.
+
+**Other `class-demo/` folders** (covered later in this guide):
+
+| Folder | README section |
+|--------|----------------|
+| `class-demo/pid-namespace-demo` | [PID Namespace Isolation](#demo-pid-namespace-isolation-image-23) |
+| `class-demo/volume-demo` | [Demo 2: Docker Volume](#demo-2-docker-volume-example) |
+| `class-demo/dockerhub-demo` | [Demo 5: Docker Hub Push](#demo-5-docker-hub-push-image-registry) |
+
+---
+
 ## Prerequisites for Participants
 
-- Docker Desktop installed and running.
+- Docker installed and running (Docker Desktop on Windows/macOS, or Docker Engine on Ubuntu).
 - Basic terminal usage.
 - Internet access (for pulling base images).
 - Recommended: at least 8 GB RAM.
-- Commands in this guide are written to be PowerShell-friendly.
+- Commands in this guide are written for both PowerShell (Windows) and bash (Ubuntu/Linux/macOS).
+
+**Ubuntu server — install Docker Engine:**
+
+```bash
+sudo apt update
+sudo apt install -y docker.io docker-compose-v2 curl
+sudo systemctl enable --now docker
+sudo usermod -aG docker "$USER"
+# log out and back in (or: newgrp docker) so group membership applies
+docker version
+docker compose version
+```
 
 ---
 
@@ -629,6 +668,131 @@ docker build -t class/python-demo:v2 .
 ```
 
 Change only app code (`app.py`) and rebuild. Show that dependency layers are reused.
+
+---
+
+### Demo 1 (Java): Dockerfile Basic Example
+
+Demo files are in `class-demo/dockerfile-demo-java/`.
+
+A small Javalin HTTP API is packaged with Maven inside a **multi-stage** Dockerfile: stage 1 compiles the JAR, stage 2 runs it on a slim JRE image.
+
+#### Ubuntu server: install JDK and Maven (optional, for local build before Docker)
+
+Use these only if you want to compile on the host (Docker can build without them):
+
+```bash
+sudo apt update
+sudo apt install -y openjdk-21-jdk maven
+java -version
+mvn -version
+```
+
+Local build (optional):
+
+```bash
+cd ./class-demo/dockerfile-demo-java
+mvn package -DskipTests
+```
+
+#### A) Build Image
+
+Windows PowerShell:
+
+```powershell
+cd .\class-demo\dockerfile-demo-java
+docker build -t class/java-demo:v1 .
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+cd ./class-demo/dockerfile-demo-java
+docker build -t class/java-demo:v1 .
+```
+
+#### B) Run Container
+
+Windows PowerShell:
+
+```powershell
+docker run --rm -p 8000:8000 --name java-demo class/java-demo:v1
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker run --rm -p 8000:8000 --name java-demo class/java-demo:v1
+```
+
+Open: `http://localhost:8000` and `http://localhost:8000/health`
+
+#### C) Observe Layer Cache
+
+Change only `src/main/java/com/demo/App.java`, rebuild, and show that Maven dependency layers stay cached when `pom.xml` is unchanged.
+
+---
+
+### Demo 1 (Node.js): Dockerfile Basic Example
+
+Demo files are in `class-demo/dockerfile-demo-nodejs/`.
+
+A small Express API mirrors the Python demo: copy `package.json`, install dependencies, copy app code, expose port 8000.
+
+#### Ubuntu server: install Node.js (optional, for local run before Docker)
+
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v
+npm -v
+```
+
+Local run (optional):
+
+```bash
+cd ./class-demo/dockerfile-demo-nodejs
+npm install
+npm start
+```
+
+#### A) Build Image
+
+Windows PowerShell:
+
+```powershell
+cd .\class-demo\dockerfile-demo-nodejs
+docker build -t class/nodejs-demo:v1 .
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+cd ./class-demo/dockerfile-demo-nodejs
+docker build -t class/nodejs-demo:v1 .
+```
+
+#### B) Run Container
+
+Windows PowerShell:
+
+```powershell
+docker run --rm -p 8000:8000 --name nodejs-demo class/nodejs-demo:v1
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+docker run --rm -p 8000:8000 --name nodejs-demo class/nodejs-demo:v1
+```
+
+Open: `http://localhost:8000` and `http://localhost:8000/health`
+
+#### C) Observe Layer Cache
+
+Change only `server.js`, rebuild, and show that the `npm install` layer is reused when `package.json` is unchanged.
 
 ---
 
@@ -1332,6 +1496,146 @@ Ubuntu/Linux/macOS (bash):
 ```bash
 docker compose down -v
 ```
+
+---
+
+### Demo 4 (Java): Docker Compose Basic Example
+
+Demo files are in `class-demo/compose-demo-java/`.
+
+Same pattern as the Python compose demo: **web** (Javalin + JDBC) and **db** (MySQL with init SQL). Host ports differ so you can run Python and Java demos side by side (`8091` for web, `3309` for MySQL).
+
+#### Ubuntu server: JDK and Maven (optional, for local app build)
+
+```bash
+sudo apt update
+sudo apt install -y openjdk-21-jdk maven
+```
+
+#### A) Start Services
+
+Windows PowerShell:
+
+```powershell
+cd .\class-demo\compose-demo-java
+docker compose up --build -d
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+cd ./class-demo/compose-demo-java
+docker compose up --build -d
+```
+
+#### B) Verify
+
+```bash
+docker compose ps
+docker compose logs -f web
+```
+
+Open: `http://localhost:8091`
+
+Expected:
+
+```json
+{"message":"Docker Compose demo: web + mysql","runtime":"java"}
+```
+
+Database check: `http://localhost:8091/db-check`
+
+Expected:
+
+```json
+{"students":3}
+```
+
+#### C) Check Database Directly
+
+```bash
+docker exec -it class-demo-java-db mysql -uroot -proot123 training -e "SELECT COUNT(*) AS total FROM students;"
+```
+
+#### D) Stop and Cleanup
+
+```bash
+docker compose down
+docker compose down -v
+```
+
+**Compose concepts (same as Python):** service definitions, internal DNS (`db` hostname), named volume, environment variables, `depends_on` with healthcheck.
+
+---
+
+### Demo 4 (Node.js): Docker Compose Basic Example
+
+Demo files are in `class-demo/compose-demo-nodejs/`.
+
+**web** (Express + `mysql2`) and **db** (MySQL). Uses host ports `8092` (web) and `3310` (MySQL) so it does not clash with Python, Java, or Demo 5 (`8082`) demos.
+
+#### Ubuntu server: Node.js (optional, for local app run)
+
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+#### A) Start Services
+
+Windows PowerShell:
+
+```powershell
+cd .\class-demo\compose-demo-nodejs
+docker compose up --build -d
+```
+
+Ubuntu/Linux/macOS (bash):
+
+```bash
+cd ./class-demo/compose-demo-nodejs
+docker compose up --build -d
+```
+
+#### B) Verify
+
+```bash
+docker compose ps
+docker compose logs -f web
+```
+
+Open: `http://localhost:8092`
+
+Expected:
+
+```json
+{"message":"Docker Compose demo: web + mysql","runtime":"nodejs"}
+```
+
+Database check: `http://localhost:8092/db-check`
+
+Expected:
+
+```json
+{"students":3}
+```
+
+#### C) Check Database Directly
+
+```bash
+docker exec -it class-demo-nodejs-db mysql -uroot -proot123 training -e "SELECT COUNT(*) AS total FROM students;"
+```
+
+#### D) Stop and Cleanup
+
+```bash
+docker compose down
+docker compose down -v
+```
+
+**Request flow:** `Browser → Express container → MySQL container (hostname db) → students table`
 
 ---
 
